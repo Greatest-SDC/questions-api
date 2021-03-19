@@ -47,7 +47,14 @@ const allQuestions = async (params, callback) => {
 
   // returns an array, so I'll have to iterate through the array
 
-  const queryStr = `select questions.*, answers.*, array_agg(url) photos from questions inner join answers on (product_id = '${params}') left join answer_photos on (answers.answer_id = answer_photos.answer_id) where questions.question_id = answers.question_id group by questions.question_id, answers.answer_id, answers.question_id;`;
+  const queryStr = `
+  select questions.*, answers.*, array_agg(url) photos
+  from questions
+  inner join answers on (product_id = '${params}')
+  left join answer_photos on (answers.answer_id = answer_photos.answer_id)
+  where questions.question_id = answers.question_id
+  group by questions.question_id, answers.answer_id, answers.question_id;
+  `;
 
   let response;
 
@@ -91,9 +98,13 @@ const allQuestions = async (params, callback) => {
   let resultsArray = [];
   const resultsArrayConstructor = (responseObj) => {
     const rows = responseObj.rows;
+    const duplicates = new Set();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
+      if (duplicates.has(row.question_id)) {
+        continue;
+      }
 
       const resultContents = {
         question_id: row.question_id,
@@ -105,6 +116,7 @@ const allQuestions = async (params, callback) => {
         answers: answersObj[row.question_id],
       }
 
+      duplicates.add(row.question_id);
       resultsArray.push(resultContents);
     }
   }
@@ -123,50 +135,29 @@ const allQuestions = async (params, callback) => {
 app.post('/api/qa/questions/:questionId/answers', (req, res) => {
   const { questionId } = req.params;
   const reqBody = req.body.params;
-  // axios.post(`${url}qa/questions/${questionId}/answers`, req.body.params, {
-  //   headers: { Authorization: TOKEN },
-  // })
-  //   .then((response) => {
-  //     console.log('server answer submit response');
-  //     res.send(201);
-  //   })
-  //   .catch((err) => {
-  //     console.log('server answer submit error', err);
-  //     res.sendStatus(500);
-  //   });
 
   postNewAnswer(questionId, reqBody, (err, data) => {
     if (err) {
-      console.log('error in post request to add answer: ', err)
+      console.log('error in post request to add answer: ', err);
+      res.sendStatus(500);
     } else {
-      res.send(data);
+      console.log('server answer submit response: ', data);
+      res.sendStatus(201);
     }
   })
-
 });
 
 const postNewAnswer = async (questionId, answerInfo, callback) => {
-  // answerinfo reqbody comes in as
-  // params: {
-  //   body: answerValue,
-  //   name: nickname,
-  //   email: emailAnswer,
-  //   photos: [],
-  // }
-  // need current date/time as well inserted as string
-  // added autoincrement ('serial'-like) to answer_id column in postgres
-
   var date = new Date();
   var formattedDate = date.toISOString();
-
-  const queryStr = `insert into answers(question_id, body, date, answerer_name, answerer_email, helpfulness, reported) values (${questionId}, ${answerInfo.body}, ${formattedDate}, ${answerInfo.name}, ${answerInfo.email}, 0, false)`;
-
   let response;
+
+  const queryStr = `insert into answers(question_id, body, date, answerer_name, answerer_email, helpfulness, reported) values (${questionId}, '${answerInfo.body}', '${formattedDate}', '${answerInfo.name}', '${answerInfo.email}', 0, false);`;
 
   try {
     response = await client.query(queryStr);
   } catch(err) {
-    console.log('error in post query: ', err);
+    console.log('error in post new answer query: ', err);
   }
 
   callback(null, response);
@@ -174,66 +165,125 @@ const postNewAnswer = async (questionId, answerInfo, callback) => {
 
 // API request to post a new question
 app.post('/api/qa/questions', (req, res) => {
-  axios.post(`${url}qa/questions`, req.body, {
-    headers: { Authorization: TOKEN },
-  })
-    .then((response) => {
-      console.log('server question submit response');
-      res.sendStatus(201);
-    })
-    .catch((err) => {
-      console.log('server question submit error', err);
+  const questionInfo = req.body;
+  // to test, use body format:
+  // {
+  //   "body": "questionsValue",
+  //   "name": "nicknameQues",
+  //   "email": "emailQues",
+  //   "product_id": prodId,
+  // }
+
+  postNewQuestion(questionInfo, (err, data) => {
+    if (err) {
+      console.log('error in post request to add question: ', err)
       res.sendStatus(500);
-    });
+    } else {
+      console.log('server question submit response: ', data);
+      res.sendStatus(201);
+    }
+  })
 });
+
+const postNewQuestion = async (questionInfo, callback) => {
+  var date = new Date();
+  var formattedDate = date.toISOString();
+  let response;
+
+  const queryStr = `insert into questions(product_id, question_body, question_date, asker_name, asker_email, question_helpfulness, reported) values ('${questionInfo.product_id}', '${questionInfo.body}', '${formattedDate}', '${questionInfo.name}', '${questionInfo.email}', 0, false);`;
+
+  try {
+    response = await client.query(queryStr);
+  } catch(err) {
+    console.log('error in post new question query: ', err);
+  }
+
+  callback(null, response);
+}
 
 // API request to increment the helpfulness of an answer
 app.put('/api/qa/answers/:answerId/helpful', (req, res) => {
   const { answerId } = req.params;
-  axios.put(`${url}qa/answers/${answerId}/helpful`, { body: { answer_id: req.body.id } }, {
-    headers: { Authorization: TOKEN },
-  })
-    .then((response) => {
-      console.log('server helpfulness put response');
-      res.sendStatus(201);
-    })
-    .catch((err) => {
+  incrementAnswerHelpfulness(answerId, (err, data) => {
+    if (err) {
       console.log('server helpfulness put error', err);
       res.sendStatus(500);
-    });
+    } else {
+      console.log('server helpfulness put response: ', data);
+      res.sendStatus(204);
+    }
+  })
 });
+
+const incrementAnswerHelpfulness = async (answerId, callback) => {
+  let response;
+
+  const queryStr = `update answers set helpfulness = (helpfulness + 1) where (answer_id = ${answerId})`;
+  try {
+    response = await client.query(queryStr);
+  } catch(err) {
+    console.log('error in incrementing answer helpfulness: ', err);
+  }
+
+  callback(null, response);
+}
 
 // API request to increment the helpfulness of a question
 app.put('/api/qa/questions/:questionId/helpful', (req, res) => {
   const { questionId } = req.params;
-  axios.put(`${url}qa/questions/${questionId}/helpful`, { body: { question_id: req.body.id } }, {
-    headers: { Authorization: TOKEN },
-  })
-    .then((response) => {
-      console.log('server helpfulness question put response');
-      res.sendStatus(201);
-    })
-    .catch((err) => {
-      console.log('server helpfulness question put error', err);
+
+  incrementQuestionHelpfulness(questionId, (err, data) => {
+    if (err) {
+      console.log('server helpfulness question put error: ', err);
       res.sendStatus(500);
-    });
+    } else {
+      console.log('server helpfulness question put response: ', data);
+      res.sendStatus(204);
+    }
+  })
 });
+
+const incrementQuestionHelpfulness = async (questionId, callback) => {
+  let response;
+  const queryStr = `update questions set question_helpfulness = (question_helpfulness + 1) where (question_id = ${questionId})`;
+
+  try {
+    response = await client.query(queryStr);
+  } catch(err) {
+    console.log('error in incrementing question helpfulness: ', err);
+  }
+
+  callback(null, response);
+}
 
 // API request to report this answer
 app.put('/api/qa/answers/:answerId/report', (req, res) => {
   const { answerId } = req.params;
-  axios.put(`${url}qa/answers/${answerId}/report`, { body: { answer_id: req.body.id } }, {
-    headers: { Authorization: TOKEN },
-  })
-    .then((response) => {
-      console.log('server report put response');
-      res.sendStatus(201);
-    })
-    .catch((err) => {
-      console.log('server report put error', err);
+
+  reportAnswer(answerId, (err, data) => {
+    if (err) {
+      console.log('server report put error: ', err);
       res.sendStatus(500);
-    });
+    } else {
+      console.log('server report put response: ', data);
+      res.sendStatus(204);
+    }
+  })
+
 });
+
+const reportAnswer = async (answerId, callback) => {
+  let response;
+  const queryStr = `update answers set reported = true where (answer_id = ${answerId})`;
+
+  try {
+    response = await client.query(queryStr);
+  } catch(err) {
+    console.log('error in updating answer as reported: ', err)
+  }
+
+  callback(null, response)
+}
 
 // sample endpoint to show connection to database
 app.get('/', (req, res) => {

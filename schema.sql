@@ -33,3 +33,6 @@ CREATE TABLE answer_photos (
 CREATE UNIQUE INDEX question_id_index ON questions (question_id);
 CREATE UNIQUE INDEX answer_id_index ON answers (answer_id);
 CREATE UNIQUE INDEX photo_id ON answer_photos (id);
+CREATE INDEX answer_photos_answer_id_index ON answer_photos (answer_id);
+CREATE INDEX product_id_index ON questions (product_id);
+CREATE INDEX answers_question_id_index ON answers (question_id);
