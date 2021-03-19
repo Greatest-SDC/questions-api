@@ -14,16 +14,6 @@ app.use(morgan('dev'));
 app.use(express.json());
 // app.use(express.static('public')) // ankylosaurus has one a few lines below too
 
-//////////////////////////////
-// FROM ANKYLOSAURUS GROUP //
-////////////////////////////
-
-// const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
-// app.use(express.static(PUBLIC_DIR));
-
-const url = 'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/';
-            'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/products/20113';
-
 app.get('/questions/:params', (req, res) => {
   const { params } = req.params;
 
@@ -37,29 +27,22 @@ app.get('/questions/:params', (req, res) => {
 });
 
 const allQuestions = async (params, callback) => {
-  // limit 5 (5 questions * 5 answers each = max 25)
-  // select * from questions where product_id = ${params}
-  // select * from answers where question_id === results of the question_ids from prev
-
   //// select questions.*, answers.*, array_agg(url) photos from questions inner join answers on (product_id = '1') left join answer_photos on (answers.answer_id = answer_photos.answer_id) where questions.question_id = answers.question_id group by questions.question_id, answers.answer_id, answers.question_id;
-
-  // select questions.*, answers.*, array_agg(url) photos from questions inner join answers on (product_id = '1') left join answer_photos on (answers.answer_id = answer_photos.answer_id) where questions.question_id = answers.question_id group by questions.question_id, answers.answer_id, answers.question_id;
-
-  // returns an array, so I'll have to iterate through the array
 
   const queryStr = `
   select questions.*, answers.*, array_agg(url) photos
   from questions
-  inner join answers on (product_id = '${params}')
+  inner join answers on (product_id = $1)
   left join answer_photos on (answers.answer_id = answer_photos.answer_id)
   where questions.question_id = answers.question_id
+  and answers.reported = false
   group by questions.question_id, answers.answer_id, answers.question_id;
   `;
 
   let response;
 
   try {
-    response = await client.query(queryStr);
+    response = await client.query(queryStr, [params]);
   } catch(err) {
     console.log('error in querying all question: ', err)
   }
@@ -152,10 +135,11 @@ const postNewAnswer = async (questionId, answerInfo, callback) => {
   var formattedDate = date.toISOString();
   let response;
 
-  const queryStr = `insert into answers(question_id, body, date, answerer_name, answerer_email, helpfulness, reported) values (${questionId}, '${answerInfo.body}', '${formattedDate}', '${answerInfo.name}', '${answerInfo.email}', 0, false);`;
+  const queryStr = `insert into answers(question_id, body, date, answerer_name, answerer_email, helpfulness, reported) values ($1, $2, $3, $4, $5, 0, false);`;
+  const params = [questionId, answerInfo.body, formattedDate, answerInfo.name, answerInfo.email]
 
   try {
-    response = await client.query(queryStr);
+    response = await client.query(queryStr, params);
   } catch(err) {
     console.log('error in post new answer query: ', err);
   }
@@ -190,10 +174,11 @@ const postNewQuestion = async (questionInfo, callback) => {
   var formattedDate = date.toISOString();
   let response;
 
-  const queryStr = `insert into questions(product_id, question_body, question_date, asker_name, asker_email, question_helpfulness, reported) values ('${questionInfo.product_id}', '${questionInfo.body}', '${formattedDate}', '${questionInfo.name}', '${questionInfo.email}', 0, false);`;
+  const queryStr = `insert into questions(product_id, question_body, question_date, asker_name, asker_email, question_helpfulness, reported) values ($1, $2, $3, $4, $5, 0, false);`;
+  const params = [questionInfo.product_id, questionInfo.body, formattedDate, questionInfo.name, questionInfo.email]
 
   try {
-    response = await client.query(queryStr);
+    response = await client.query(queryStr, params);
   } catch(err) {
     console.log('error in post new question query: ', err);
   }
@@ -218,9 +203,10 @@ app.put('/api/qa/answers/:answerId/helpful', (req, res) => {
 const incrementAnswerHelpfulness = async (answerId, callback) => {
   let response;
 
-  const queryStr = `update answers set helpfulness = (helpfulness + 1) where (answer_id = ${answerId})`;
+  const queryStr = `update answers set helpfulness = (helpfulness + 1) where (answer_id = $1)`;
+  const params = [answerId]
   try {
-    response = await client.query(queryStr);
+    response = await client.query(queryStr, params);
   } catch(err) {
     console.log('error in incrementing answer helpfulness: ', err);
   }
@@ -245,10 +231,11 @@ app.put('/api/qa/questions/:questionId/helpful', (req, res) => {
 
 const incrementQuestionHelpfulness = async (questionId, callback) => {
   let response;
-  const queryStr = `update questions set question_helpfulness = (question_helpfulness + 1) where (question_id = ${questionId})`;
+  const queryStr = `update questions set question_helpfulness = (question_helpfulness + 1) where (question_id = $1)`;
+  const params = [questionId];
 
   try {
-    response = await client.query(queryStr);
+    response = await client.query(queryStr, params);
   } catch(err) {
     console.log('error in incrementing question helpfulness: ', err);
   }
@@ -269,15 +256,15 @@ app.put('/api/qa/answers/:answerId/report', (req, res) => {
       res.sendStatus(204);
     }
   })
-
 });
 
 const reportAnswer = async (answerId, callback) => {
   let response;
-  const queryStr = `update answers set reported = true where (answer_id = ${answerId})`;
+  const queryStr = `update answers set reported = true where (answer_id = $1)`;
+  const params = [answerId];
 
   try {
-    response = await client.query(queryStr);
+    response = await client.query(queryStr, params);
   } catch(err) {
     console.log('error in updating answer as reported: ', err)
   }
@@ -285,49 +272,21 @@ const reportAnswer = async (answerId, callback) => {
   callback(null, response)
 }
 
-// sample endpoint to show connection to database
-app.get('/', (req, res) => {
-  client.query('SELECT NOW() as now', (err, res) => {
-    if (err) {
-      console.log('error in sample query: ', err.stack);
-    } else {
-      console.log('sample query fine')
-      console.log(res)
-    }
-  })
-  res.send('Hello World!')
-});
-
-app.get('/test', (req, res) => {
-  const { params } = req.params;
-  // refactor into client.query
-  // axios.get(`${url}qa/questions/?product_${params}`, {
-  //   headers: { Authorization: TOKEN },
-  // })
-  //   .then((data) => res.send(data.data))
-  //   .catch((err) => console.log('error getting questions', err.response.data));
-  test(params, (err, data) => {
-    res.send(data);
-  })
-
-});
-
-const test = async (params, callback) => {
-  const queryStr2 = "select * from answers where question_id = '1'";
-
-  await client.query(queryStr2, (err, data) => {
-    if (err) {
-      console.error('error in querying all questions: ', err)
-    } else {
-      console.log(data);
-      callback(null, data.rows);
-    }
-  })
-}
-
 app.listen(port, () => {
   console.log(`questions api service listening at http://localhost:${port}`)
 })
+
+//////////////////////////////
+// FROM ANKYLOSAURUS GROUP //
+////////////////////////////
+
+// const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
+// app.use(express.static(PUBLIC_DIR));
+
+// const url = 'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/';
+//             'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/products/20113';
+
+/// OTHER ENDPOINTS OLD CODE FROM FEC GROUP ////
 
 // API request to get the product info
 // app.get('/product/:params', (req, res) => {
