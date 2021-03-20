@@ -5,10 +5,10 @@ const path = require('path');
 const { reset } = require('nodemon'); // from Ankylosaurus group
 
 const client = require('../database');
-const { TOKEN } = require('../config.js');
+// const { TOKEN } = require('../config.js');
 
 const app = express();
-const port = 3000;
+const port = 8081;
 
 app.use(morgan('dev'));
 app.use(express.json());
@@ -16,8 +16,9 @@ app.use(express.json());
 
 app.get('/questions/:params', (req, res) => {
   const { params } = req.params;
+  const constSlicedParams = params.substring(3);
 
-  allQuestions(params, (err, data) => {
+  allQuestions(constSlicedParams, (err, data) => {
     if (err) {
       console.log('error in get request to all questions: ', err)
     } else {
@@ -63,13 +64,18 @@ const allQuestions = async (params, callback) => {
         answersObj[row.question_id][row.answer_id] = 1;
       }
 
+      let photosArray = row.photos;
+      if (photosArray[0] === null) {
+        photosArray = []
+      }
+
       const answerContents = {
         id: row.answer_id,
         body: row.body,
         date: row.date,
         answerer_name: row.answerer_name,
         helpfulness: row.helpfulness,
-        photos: row.photos,
+        photos: photosArray,
       };
 
       answersObj[rows[i].question_id][rows[i].answer_id] = answerContents;
@@ -157,6 +163,7 @@ app.post('/api/qa/questions', (req, res) => {
   //   "email": "emailQues",
   //   "product_id": prodId,
   // }
+  console.log(questionInfo)
 
   postNewQuestion(questionInfo, (err, data) => {
     if (err) {
@@ -283,85 +290,85 @@ app.listen(port, () => {
 // const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
 // app.use(express.static(PUBLIC_DIR));
 
-// const url = 'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/';
-//             'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/products/20113';
-
+const url = 'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/';
+            // 'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/products/20113';
+const TOKEN = 'c83882d4c9760249471a50a5d444d973ab86315c'
 /// OTHER ENDPOINTS OLD CODE FROM FEC GROUP ////
 
 // API request to get the product info
-// app.get('/product/:params', (req, res) => {
-//   const { params } = req.params;
-//   axios.get(`${url}products/${params}`, {
-//     headers: { Authorization: TOKEN },
-//   })
-//     .then((data) => {
-//       res.send(data.data);
-//     })
-//     .catch((err) => console.log('error getting product info', err.response.data));
-// });
+app.get('/product/:params', (req, res) => {
+  const { params } = req.params;
+  axios.get(`${url}products/${params}`, {
+    headers: { Authorization: TOKEN },
+  })
+    .then((data) => {
+      res.send(data.data);
+    })
+    .catch((err) => console.log('error getting product info', err.response.data));
+});
 
-// // API request to get the styles
-// app.get('/styles/:params', (req, res) => {
-//   const { params } = req.params;
-//   axios.get(`${url}products/${params}/styles`, {
-//     headers: { Authorization: TOKEN },
-//   })
-//     .then((data) => {
-//       res.send(data.data);
-//     })
-//     .catch((err) => console.log('error getting styles', err.response.data));
-// });
+// API request to get the styles
+app.get('/styles/:params', (req, res) => {
+  const { params } = req.params;
+  axios.get(`${url}products/${params}/styles`, {
+    headers: { Authorization: TOKEN },
+  })
+    .then((data) => {
+      res.send(data.data);
+    })
+    .catch((err) => console.log('error getting styles', err.response.data));
+});
 
-// // API request to get the reviews based on a different sort option
-// app.get('/reviews/:params', (req, res) => {
-//   const { params } = req.params;
-//   axios.get(`${url}reviews/?product_${params}`, {
-//     headers: { Authorization: TOKEN },
-//   })
-//     .then((data) => res.send(data.data))
-//     .catch((err) => console.log('error getting reviews', err.response.data));
-// });
+// API request to get the reviews based on a different sort option
+app.get('/reviews/:params', (req, res) => {
+  const { params } = req.params;
+  axios.get(`${url}reviews/?product_${params}`, {
+    headers: { Authorization: TOKEN },
+  })
+    .then((data) => res.send(data.data))
+    .catch((err) => console.log('error getting reviews', err.response.data));
+});
 
-// // API request to get the reviews meta data
-// app.get('/reviews/meta/:params', (req, res) => {
-//   const { params } = req.params;
-//   axios.get(`${url}reviews/meta?product_${params}`, {
-//     headers: { Authorization: TOKEN },
-//   })
-//     .then((data) => res.send(data.data))
-//     .catch((err) => console.log('error getting reviews', err.response.data));
-// });
+// API request to get the reviews meta data
+app.get('/reviews/meta/:params', (req, res) => {
+  const { params } = req.params;
+  axios.get(`${url}reviews/meta?product_${params}`, {
+    headers: { Authorization: TOKEN },
+  })
+    .then((data) => res.send(data.data))
+    .catch((err) => console.log('error getting reviews', err.response.data));
+});
 
-// // API request to increment the helpfulness counter
-// app.put('/reviews/help', (req, res) => {
-//   axios.put(`${url}reviews/${req.body.id}/helpful`, { body: { review_id: req.body.id } }, {
-//     headers: { Authorization: TOKEN },
-//   })
-//     .then(() => res.sendStatus(204))
-//     .catch((err) => console.log('server help error', err));
-// });
+// API request to increment the helpfulness counter
+app.put('/reviews/help', (req, res) => {
+  axios.put(`${url}reviews/${req.body.id}/helpful`, { body: { review_id: req.body.id } }, {
+    headers: { Authorization: TOKEN },
+  })
+    .then(() => res.sendStatus(204))
+    .catch((err) => console.log('server help error', err));
+});
 
-// // API request to remove the review
-// app.put('/reviews/report', (req, res) => {
-//   axios.put(`${url}reviews/${req.body.id}/report`, { body: { review_id: req.body.id } }, {
-//     headers: { Authorization: TOKEN },
-//   })
-//     .then(() => res.send(204))
-//     .catch((err) => console.log('server report error', err));
-// });
+// API request to remove the review
+app.put('/reviews/report', (req, res) => {
+  axios.put(`${url}reviews/${req.body.id}/report`, { body: { review_id: req.body.id } }, {
+    headers: { Authorization: TOKEN },
+  })
+    .then(() => res.send(204))
+    .catch((err) => console.log('server report error', err));
+});
 
-// // API request to post a new review
-// app.post('/newReview/', (req, res) => {
-//   console.log('at the server', req.body);
-//   axios.post(`${url}reviews`, req.body.reviewObj, {
-//     headers: { Authorization: TOKEN },
-//   })
-//     .then((response) => {
-//       console.log('server review submit success');
-//       res.sendStatus(201);
-//     })
-//     .catch((err) => {
-//       console.log('server review submit error', err);
-//       res.sendStatus(500);
-//     });
-// });
+// API request to post a new review
+app.post('/newReview/', (req, res) => {
+  console.log('at the server', req.body);
+  axios.post(`${url}reviews`, req.body.reviewObj, {
+    headers: { Authorization: TOKEN },
+  })
+    .then((response) => {
+      console.log('server review submit success');
+      res.sendStatus(201);
+    })
+    .catch((err) => {
+      console.log('server review submit error', err);
+      res.sendStatus(500);
+    });
+});
