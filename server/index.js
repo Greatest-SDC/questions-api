@@ -163,7 +163,6 @@ app.post('/api/qa/questions', (req, res) => {
   //   "email": "emailQues",
   //   "product_id": prodId,
   // }
-  console.log(questionInfo)
 
   postNewQuestion(questionInfo, (err, data) => {
     if (err) {
