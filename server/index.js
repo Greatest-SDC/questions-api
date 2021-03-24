@@ -10,6 +10,12 @@ const client = require('../database');
 const app = express();
 const port = 8081;
 
+// loader.io verification
+
+app.get('/loaderio-644ad521864e5cfbf8224be60761e94c', (req, res) => {
+  res.send('loaderio-644ad521864e5cfbf8224be60761e94c')
+})
+
 app.use(morgan('dev'));
 app.use(express.json());
 // app.use(express.static('public')) // ankylosaurus has one a few lines below too
