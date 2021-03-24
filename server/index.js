@@ -8,11 +8,11 @@ const client = require('../database');
 // const { TOKEN } = require('../config.js');
 
 const app = express();
+// const port = process.env.PORT || 8081;
 const port = 8081;
 
 app.use(morgan('dev'));
 app.use(express.json());
-// app.use(express.static('public')) // ankylosaurus has one a few lines below too
 
 app.get('/questions/:params', (req, res) => {
   const { params } = req.params;
@@ -22,6 +22,7 @@ app.get('/questions/:params', (req, res) => {
     if (err) {
       console.log('error in get request to all questions: ', err)
     } else {
+      console.log(data)
       res.send(data);
     }
   })
@@ -279,7 +280,7 @@ const reportAnswer = async (answerId, callback) => {
 }
 
 app.listen(port, () => {
-  console.log(`questions api service listening at http://localhost:${port}`)
+  console.log(`questions api service listening at host:${port}`)
 })
 
 //////////////////////////////
@@ -291,7 +292,7 @@ app.listen(port, () => {
 
 const url = 'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/';
             // 'https://app-hrsei-api.herokuapp.com/api/fec2/hr-sea/products/20113';
-const TOKEN = 'c83882d4c9760249471a50a5d444d973ab86315c'
+
 /// OTHER ENDPOINTS OLD CODE FROM FEC GROUP ////
 
 // API request to get the product info
