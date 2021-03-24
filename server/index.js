@@ -11,12 +11,6 @@ const app = express();
 // const port = process.env.PORT || 8081;
 const port = 8081;
 
-// loader.io verification
-
-app.get('/loaderio-644ad521864e5cfbf8224be60761e94c', (req, res) => {
-  res.send('loaderio-644ad521864e5cfbf8224be60761e94c')
-})
-
 app.use(morgan('dev'));
 app.use(express.json());
 
