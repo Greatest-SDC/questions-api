@@ -14,6 +14,12 @@ const port = 8081;
 app.use(morgan('dev'));
 app.use(express.json());
 
+// loader.io verification
+
+app.get('/loaderio-50be1181c26bf4a9c5fb1417728c623b', (req, res) => {
+  res.send('loaderio-50be1181c26bf4a9c5fb1417728c623b  ')
+})
+
 app.get('/questions/:params', (req, res) => {
   const { params } = req.params;
   const constSlicedParams = params.substring(3);
