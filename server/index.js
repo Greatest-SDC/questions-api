@@ -16,7 +16,6 @@ app.get('/questions/:params', (req, res) => {
     if (err) {
       console.log('error in get request to all questions: ', err)
     } else {
-      console.log(data)
       res.send(data);
     }
   })
