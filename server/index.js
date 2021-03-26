@@ -1,24 +1,12 @@
 const express = require('express');
-const morgan = require('morgan');
 const axios = require('axios');
-const path = require('path');
-const { reset } = require('nodemon'); // from Ankylosaurus group
 
 const client = require('../database');
-// const { TOKEN } = require('../config.js');
 
 const app = express();
-// const port = process.env.PORT || 8081;
-const port = 8081;
+const port = process.env.PORT || 8081;
 
-app.use(morgan('dev'));
 app.use(express.json());
-
-// loader.io verification
-
-app.get('/loaderio-50be1181c26bf4a9c5fb1417728c623b', (req, res) => {
-  res.send('loaderio-50be1181c26bf4a9c5fb1417728c623b  ')
-})
 
 app.get('/questions/:params', (req, res) => {
   const { params } = req.params;
